@@ -5,6 +5,7 @@ import Builder from "./pages/builder";
 import Preview from "./pages/preview";
 import Navbar from "./components/navbar";
 import { useState } from "react";
+import Dashboard from "./pages/dashboard";
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/builder" element={<Builder />} />
         <Route path="/preview" element={<Preview />} />
+        <Route path="/dashboard" element={<Dashboard />} />
       </Routes>
     </>
   );
