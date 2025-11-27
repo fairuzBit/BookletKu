@@ -1,17 +1,47 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabase";
-import { useParams } from "react-router-dom"; // ⭐ TAMBAH: Untuk mengambil ID dari URL ⭐
+import { useParams } from "react-router-dom";
 
 // ===========================================
 //  1. DEFINISI TEMPLATE & HELPERS
+
+// ⭐ DATA TERJEMAHAN ⭐
+const TRANSLATIONS = {
+  id: {
+    title: "Menu Digital",
+    categoryTitle: "Kategori Menu:",
+    all: "Semua",
+    cartTitle: "🛒 Keranjang",
+    cartEmpty: "Keranjang kosong.",
+    total: "Total:",
+    checkout: "Checkout Pesanan",
+    availableItems: "Item Tersedia",
+    add: "+ Tambah",
+    descMessage:
+      "Pesan mudah tanpa perlu ngantri ribet ke kasir ya kan, yuk cukup list pesanan kamu dan kirimkan orderan kamu ke wa admin nanti mimin langsung proses pesenan kamu :)",
+  },
+  en: {
+    title: "Digital Menu",
+    categoryTitle: "Menu Categories:",
+    all: "All",
+    cartTitle: "🛒 Your Cart",
+    cartEmpty: "Your cart is empty.",
+    total: "Total:",
+    checkout: "Checkout via WhatsApp",
+    availableItems: "Items Available",
+    add: "+ Add to Cart",
+    descMessage:
+      "Order easily without queuing up at the cashier. Just list your order and send it to the admin via WhatsApp. We will process your order immediately.",
+  },
+};
 
 const TEMPLATES = {
   // TEMPLATE 1: Colorful (Inspirasi desain Ungu)
   Colorful: {
     bgMain: "#f2f2f2",
-    sidebarBg: "rgb(80, 20, 160)", // Ungu gelap
+    sidebarBg: "rgb(80, 20, 160)",
     sidebarText: "white",
-    primaryAccent: "rgb(80, 20, 160)", // Ungu untuk harga/judul
+    primaryAccent: "rgb(80, 20, 160)",
     cardBg: "white",
     cardShadow: "0 4px 10px rgba(0,0,0,0.08)",
     cardBorder: "none",
@@ -22,7 +52,7 @@ const TEMPLATES = {
     bgMain: "#ffffff",
     sidebarBg: "#f8f8f8",
     sidebarText: "#333",
-    primaryAccent: "#007bff", // Biru
+    primaryAccent: "#007bff",
     cardBg: "#ffffff",
     cardShadow: "none",
     cardBorder: "1px solid #eee",
@@ -34,44 +64,109 @@ const TEMPLATES = {
  * Memformat angka menjadi string format Rupiah (tanpa "Rp").
  */
 const formatCurrency = (amount) => {
-  // Pastikan amount diolah sebagai string sebelum formatting
   const amountStr = String(Math.round(amount)).replace(/[^0-9]/g, "");
   if (!amountStr) return "0";
   const formatted = amountStr.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   return formatted;
 };
 
+const langButtonStyle = (isActive) => ({
+  padding: "8px 12px",
+  backgroundColor: isActive ? "white" : "rgba(255, 255, 255, 0.2)",
+  color: isActive ? "rgb(80, 20, 160)" : "white",
+  border: "none",
+  borderRadius: "6px",
+  cursor: "pointer",
+  fontWeight: "bold",
+  fontSize: "0.9em",
+  flex: 1,
+});
+
+const previewThemeButtonStyle = (templateName, currentTemplate) => ({
+  padding: "6px 10px",
+  backgroundColor:
+    templateName === currentTemplate ? "white" : "rgba(255, 255, 255, 0.2)",
+  color: templateName === currentTemplate ? "rgb(80, 20, 160)" : "white",
+  border: "none",
+  borderRadius: "4px",
+  cursor: "pointer",
+  fontWeight: "bold",
+  fontSize: "0.85em",
+});
+
 // ===========================================
 // ⭐ 2. KOMPONEN PREVIEW UTAMA ⭐
 // ===========================================
 
 export default function Preview() {
-  // ⭐ BARIS BARU: Ambil ID dari URL (Contoh: /preview/user_unique_id_123) ⭐
   const { id: userId } = useParams();
 
   const [menu, setMenu] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // State Settings (Nanti akan diambil dari Supabase)
+  const [lang, setLang] = useState("id");
+  const T = TRANSLATIONS[lang];
+
   const [settings, setSettings] = useState({
-    template: "Colorful", // Default
-    whatsappNumber: "082229081327", // Default
+    template: "Colorful",
+    whatsappNumber: "082229081327",
   });
 
-  // State Keranjang Belanja
   const [cart, setCart] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  // Tema Aktif
+  // ⭐ Tema aktif diambil dari state settings ⭐
   const theme = TEMPLATES[settings.template] || TEMPLATES.Colorful;
 
-  // --- FUNGSI READ DATA MENU & SETTINGS ---
+  // --- FUNGSI UPDATE SETTINGS (Untuk tombol Theme di Preview) ---
+  const handleTemplateChange = async (newTemplate) => {
+    // 1. Update State Lokal segera (agar terlihat cepat)
+    setSettings((prev) => ({ ...prev, template: newTemplate }));
+
+    // 2. Kirim Update ke DB
+    const { error } = await supabase
+      .from("user_settings")
+      .update({ template: newTemplate })
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Gagal menyimpan template:", error);
+      alert("Gagal menyimpan pilihan template!");
+    }
+  };
+
+  // --- FUNGSI UTAMA UNTUK FETCH DATA MENU ---
+  const fetchMenuData = async () => {
+    const { data: menuData, error } = await supabase
+      .from("menu_items")
+      // PERBAIKAN 1: HANYA PILIH KOLOM YANG ADA DI DATABASE
+      .select("id, name, Harga, Deskripsi, Kategori, foto_url, order")
+      .order("order", { ascending: true });
+
+    if (error) {
+      console.error("Gagal mengambil menu:", error);
+    }
+
+    if (menuData) {
+      setMenu(
+        menuData.map((item) => ({
+          ...item,
+          price: item.Harga,
+          desc: item.Deskripsi,
+          // PERBAIKAN 2: Hapus properti mapping untuk terjemahan yang tidak ada
+          category: item.Kategori,
+          image: item.foto_url,
+        }))
+      );
+    }
+  };
+
+  // --- FUNGSI UNTUK FETCH DATA AWAL (MENU DAN SETTINGS) ---
   const fetchMenuAndSettings = async () => {
     setIsLoading(true);
 
     // 1. Ambil Settings (Template & WA Number)
     if (userId) {
-      // Hanya fetch jika ID tersedia
       const { data: settingsData } = await supabase
         .from("user_settings")
         .select("template, whatsapp_number")
@@ -81,50 +176,82 @@ export default function Preview() {
       if (settingsData) {
         setSettings({
           template: settingsData.template,
-          whatsappNumber: settingsData.whatsapp_number, // ⭐ NOMOR BARU DARI DB ⭐
+          whatsappNumber: settingsData.whatsapp_number,
         });
       }
     }
 
     // 2. Ambil Data Menu
-    const { data: menuData } = await supabase
-      .from("menu_items")
-      .select("id, name, Harga, Deskripsi, Kategori, foto_url, order")
-      .order("order", { ascending: true });
+    await fetchMenuData();
 
-    if (menuData) {
-      setMenu(
-        menuData.map((item) => ({
-          ...item,
-          price: item.Harga,
-          desc: item.Deskripsi,
-          category: item.Kategori,
-          image: item.foto_url,
-        }))
-      );
-    }
     setIsLoading(false);
   };
 
+  // ⭐ SUBSCRIBE KE PERUBAHAN SETTINGS DAN MENU SECARA REALTIME ⭐
   useEffect(() => {
-    // ⭐ Panggil fungsi baru ini ⭐
+    if (!userId) return;
+
+    // 1. MUAT DATA AWAL
     fetchMenuAndSettings();
-  }, [userId]); // Re-fetch jika ID di URL berubah
+
+    // 2. LISTENER REALTIME UNTUK USER_SETTINGS (Perubahan Tema/WA)
+    const settingsChannel = supabase
+      .channel("settings_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "user_settings",
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          if (payload.new.template) {
+            setSettings((prev) => ({
+              ...prev,
+              template: payload.new.template,
+              whatsappNumber: payload.new.whatsapp_number,
+            }));
+          }
+        }
+      )
+      .subscribe();
+
+    // 3. LISTENER REALTIME UNTUK MENU_ITEMS (Perbaikan Logika Utama)
+    const menuChannel = supabase
+      .channel("menu_items_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*", // MENDENGARKAN SEMUA EVENT: INSERT, UPDATE, DELETE
+          schema: "public",
+          table: "menu_items",
+        },
+        () => {
+          console.log("Perubahan menu terdeteksi. Memuat ulang data...");
+          fetchMenuData(); // Panggil ulang untuk mengambil data menu terbaru
+        }
+      )
+      .subscribe();
+
+    // Clean-up function (penting)
+    return () => {
+      supabase.removeChannel(settingsChannel);
+      supabase.removeChannel(menuChannel); // <--- Hapus channel menu
+    };
+  }, [userId]); // Dependency array: userId
 
   // --- LOGIKA KERANJANG BELANJA ---
-
   const handleAddToCart = (item) => {
     setCart((cart) => {
       const existingItem = cart.find((cartItem) => cartItem.id === item.id);
       if (existingItem) {
-        // Item sudah ada, tambahkan kuantitasnya
         return cart.map((cartItem) =>
           cartItem.id === item.id
             ? { ...cartItem, quantity: cartItem.quantity + 1 }
             : cartItem
         );
       } else {
-        // Item baru
         return [...cart, { ...item, quantity: 1 }];
       }
     });
@@ -139,19 +266,30 @@ export default function Preview() {
             : item
         )
         .filter((item) => item.quantity > 0)
-    ); // Hapus jika kuantitas jadi 0
+    );
   };
 
   const handleCheckout = () => {
-    if (cart.length === 0) return alert("Keranjang belanja masih kosong!");
+    if (cart.length === 0) return alert(T.cartEmpty);
+
+    let greeting =
+      lang === "id"
+        ? "Hallo kak, saya ingin memesan menu berikut yaa"
+        : "Hello, I would like to order the following menu";
+    let totalText = lang === "id" ? "TOTAL HARGA" : "TOTAL PRICE";
+    let thanksText =
+      lang === "id"
+        ? "Terimakasih kak, mohon segera diproses yaa."
+        : "Thank you, please process my order immediately.";
 
     let orderList = cart
-      .map(
-        (item, index) =>
-          `${index + 1}. ${item.name} (${
-            item.quantity
-          } porsi) - Rp${formatCurrency(item.price * item.quantity)},00`
-      )
+      .map((item, index) => {
+        // PERBAIKAN 3: Hanya gunakan item.name (tanpa logika terjemahan)
+        const itemName = item.name;
+        return `${index + 1}. ${itemName} (${
+          item.quantity
+        } porsi) - Rp${formatCurrency(item.price * item.quantity)},00`;
+      })
       .join("\n");
 
     const total = cart.reduce(
@@ -159,12 +297,10 @@ export default function Preview() {
       0
     );
 
-    const message = `Hallo kak, saya ingin memesan menu berikut yaa :\n\n*DAFTAR PESANAN:*\n${orderList}\n\n*TOTAL HARGA: Rp${formatCurrency(
+    const message = `${greeting} :\n\n*DAFTAR PESANAN:*\n${orderList}\n\n*${totalText}: Rp${formatCurrency(
       total
-    )},00*\n\nTerimakasih kak, mohon segera diproses yaa.`;
+    )},00*\n\n${thanksText}`;
 
-    // Logika WA
-    // ⭐ NOMOR DIJAMIN MENGGUNAKAN settings.whatsappNumber DARI DB ⭐
     const cleanNumber = settings.whatsappNumber.replace(/[^0-9]/g, "");
     const fullNumber = cleanNumber.startsWith("62")
       ? cleanNumber
@@ -175,7 +311,7 @@ export default function Preview() {
     )}`;
     window.open(whatsappUrl, "_blank");
 
-    setCart([]); // Bersihkan keranjang
+    setCart([]);
   };
 
   const cartTotal = cart.reduce(
@@ -183,10 +319,10 @@ export default function Preview() {
     0
   );
 
-  // --- FILTER & RENDER SETTINGS ---
-  const categories = ["All", ...new Set(menu.map((item) => item.category))];
+  // --- FILTER & RENDERING LOGIC ---
+  const categories = [T.all, ...new Set(menu.map((item) => item.category))];
   const filteredMenu =
-    selectedCategory === "All"
+    selectedCategory === "All" || selectedCategory === T.all
       ? menu
       : menu.filter((item) => item.category === selectedCategory);
 
@@ -206,7 +342,7 @@ export default function Preview() {
         justifyContent: "space-between",
       }}
     >
-      {/* KOLOM 1: SIDEBAR/NAV (Kategori) */}
+      {/* KOLOM 1: SIDEBAR/NAV (Kategori & Tombol Theme) */}
       <div
         style={{
           width: "280px",
@@ -218,6 +354,53 @@ export default function Preview() {
           borderRight: theme.cardBorder,
         }}
       >
+        {/* ⭐⭐ TOMBOL THEME DI PREVIEW ⭐⭐ */}
+        <div
+          style={{
+            padding: "10px 0",
+            borderBottom: `1px solid ${
+              theme.sidebarText === "white"
+                ? "rgba(255, 255, 255, 0.2)"
+                : "#ccc"
+            }`,
+            marginBottom: "30px",
+          }}
+        >
+          <h4 style={{ color: theme.sidebarText, marginBottom: "10px" }}>
+            Pilih Tema:
+          </h4>
+          <div style={{ display: "flex", gap: "5px" }}>
+            <button
+              onClick={() => handleTemplateChange("Colorful")}
+              style={previewThemeButtonStyle("Colorful", settings.template)}
+            >
+              Colorful
+            </button>
+            <button
+              onClick={() => handleTemplateChange("Minimalist")}
+              style={previewThemeButtonStyle("Minimalist", settings.template)}
+            >
+              Minimalist
+            </button>
+          </div>
+        </div>
+
+        {/* TOGGLE BAHASA */}
+        <div style={{ display: "flex", gap: "10px", marginBottom: "30px" }}>
+          <button
+            onClick={() => setLang("id")}
+            style={langButtonStyle(lang === "id")}
+          >
+            ID
+          </button>
+          <button
+            onClick={() => setLang("en")}
+            style={langButtonStyle(lang === "en")}
+          >
+            EN
+          </button>
+        </div>
+
         <h2
           style={{
             color: theme.sidebarText,
@@ -225,7 +408,7 @@ export default function Preview() {
             fontSize: "1.5em",
           }}
         >
-          Menu Digital
+          {T.title}
         </h2>
 
         <div
@@ -236,7 +419,7 @@ export default function Preview() {
             fontWeight: "bold",
           }}
         >
-          Kategori Menu:
+          {T.categoryTitle}
         </div>
 
         {categories.map((cat) => (
@@ -274,11 +457,7 @@ export default function Preview() {
             color: theme.sidebarText,
           }}
         >
-          <p style={{ fontSize: "0.9em", opacity: 0.9 }}>
-            Pesan mudah tanpa perlu ngantri ribet ke kasir ya kan, yuk cukup
-            list pesanan kamu dan kirimkan orderan kamu ke wa admin nanti mimin
-            langsung proses pesenan kamu :)
-          </p>
+          <p style={{ fontSize: "0.9em", opacity: 0.9 }}>{T.descMessage}</p>
         </div>
       </div>
 
@@ -295,7 +474,7 @@ export default function Preview() {
           }}
         >
           <h1 style={{ color: theme.textColor, fontSize: "1.8em" }}>
-            Menu {selectedCategory}
+            {T.title} {selectedCategory === T.all ? T.all : selectedCategory}
           </h1>
           <div
             style={{
@@ -308,7 +487,7 @@ export default function Preview() {
               color: theme.primaryAccent,
             }}
           >
-            {menu.length} Item Tersedia
+            {menu.length} {T.availableItems}
           </div>
         </header>
 
@@ -349,11 +528,13 @@ export default function Preview() {
               {/* Detail Teks */}
               <div style={{ padding: "15px" }}>
                 <strong style={{ fontSize: "1.1em", color: theme.textColor }}>
+                  {/* PERBAIKAN 4: Hanya gunakan item.name */}
                   {item.name}
                 </strong>
                 <p
                   style={{ fontSize: "0.9em", color: "#666", margin: "5px 0" }}
                 >
+                  {/* PERBAIKAN 5: Hanya gunakan item.desc */}
                   {item.desc}
                 </p>
 
@@ -385,7 +566,7 @@ export default function Preview() {
                       fontSize: "0.9em",
                     }}
                   >
-                    + Add to Cart
+                    {T.add}
                   </button>
                 </div>
               </div>
@@ -394,9 +575,7 @@ export default function Preview() {
         </div>
       </div>
 
-      {/* =================================== */}
       {/* KOLOM 3: KERANJANG BELANJA */}
-      {/* =================================== */}
       <div
         style={{
           width: "350px",
@@ -415,7 +594,7 @@ export default function Preview() {
             marginBottom: "20px",
           }}
         >
-          🛒 Keranjang
+          {T.cartTitle}
         </h3>
 
         {/* List Item Keranjang */}
@@ -431,7 +610,7 @@ export default function Preview() {
             <p
               style={{ textAlign: "center", color: "#999", paddingTop: "50px" }}
             >
-              Keranjang kosong.
+              {T.cartEmpty}
             </p>
           ) : (
             cart.map((item) => (
@@ -448,6 +627,7 @@ export default function Preview() {
               >
                 <div style={{ flexGrow: 1 }}>
                   <div style={{ fontWeight: "bold", color: theme.textColor }}>
+                    {/* PERBAIKAN 6: Hanya gunakan item.name */}
                     {item.name}
                   </div>
                   <div style={{ fontSize: "0.9em", color: "#666" }}>
@@ -507,7 +687,7 @@ export default function Preview() {
               color: theme.textColor,
             }}
           >
-            <span>Total:</span>
+            <span>{T.total}</span>
             <span>Rp{formatCurrency(cartTotal)},00</span>
           </div>
 
@@ -518,7 +698,7 @@ export default function Preview() {
               width: "100%",
               padding: "12px",
               backgroundColor: "#25D366", // Hijau WA
-              color: "black",
+              color: "white",
               border: "none",
               borderRadius: "6px",
               cursor: "pointer",
@@ -526,8 +706,8 @@ export default function Preview() {
               fontSize: "1em",
             }}
           >
-            Checkout Pesanan (
-            {cart.reduce((sum, item) => sum + item.quantity, 0)} Porsi)
+            {T.checkout} ({cart.reduce((sum, item) => sum + item.quantity, 0)}{" "}
+            Porsi)
           </button>
         </div>
       </div>

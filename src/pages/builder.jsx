@@ -6,20 +6,33 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { arrayMove } from "@dnd-kit/sortable";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import ImageUploader from "../components/ImageUploader";
 import { supabase } from "../supabase";
+
+// ===============================================
+// ⭐ TEMA & STYLING BARU (Cafe Gen Z) ⭐
+// ===============================================
+const THEME = {
+  bgMain: "#F4F6F8", // Background Super Light Gray/Off-White
+  cardBg: "#FFFFFF", // Card Background White
+  primaryAccent: "#6B8E23", // Aksen Hijau Sage (Modern, Calm)
+  secondaryAccent: "#FFD700", // Aksen Kuning Mustard (Kontras)
+  textColor: "#2C3E50", // Dark Navy/Charcoal
+  shadow: "0 6px 15px rgba(0, 0, 0, 0.08)",
+  inputBorder: "#DCE0E6",
+  danger: "#E74C3C",
+};
 
 // 1. HELPER FUNCTION (DI LUAR KOMPONEN)
 const formatCurrency = (amount) => {
   const amountStr = String(amount).replace(/[^0-9]/g, "");
   if (!amountStr) return "";
-  // Menggunakan ekspresi reguler untuk memisahkan ribuan dengan titik
   const formatted = amountStr.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   return formatted;
 };
 
-// 2. Fungsi untuk D&D atau drop and drag
+// 2. Fungsi untuk D&D atau drop and drag (Tidak Berubah)
 const SortableItem = ({ item, deleteItem, formatCurrency }) => {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: item.id });
@@ -31,15 +44,16 @@ const SortableItem = ({ item, deleteItem, formatCurrency }) => {
     cursor: "grab",
     zIndex: 10,
     // Gaya Card Menu
-    border: "1px solid #ddd",
-    padding: "15px",
+    border: `1px solid ${THEME.inputBorder}`,
+    padding: "20px", // Padding lebih besar
     borderRadius: "10px",
     marginBottom: "15px",
-    backgroundColor: "#fff",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+    backgroundColor: THEME.cardBg,
+    boxShadow: "0 2px 8px rgba(0,0,0,0.05)", // Shadow lebih lembut
     display: "flex",
     alignItems: "center",
-    gap: "15px",
+    gap: "20px",
+    fontFamily: "sans-serif",
   };
 
   return (
@@ -49,9 +63,14 @@ const SortableItem = ({ item, deleteItem, formatCurrency }) => {
         <img
           src={item.image}
           alt={item.name}
-          width="100"
-          height="100"
-          style={{ borderRadius: "8px", objectFit: "cover", flexShrink: 0 }}
+          width="120" // Gambar lebih besar
+          height="120"
+          style={{
+            borderRadius: "8px",
+            objectFit: "cover",
+            flexShrink: 0,
+            border: `2px solid ${THEME.primaryAccent}`, // Border aksen
+          }}
         />
       )}
 
@@ -65,23 +84,34 @@ const SortableItem = ({ item, deleteItem, formatCurrency }) => {
             marginBottom: "5px",
           }}
         >
-          <strong style={{ fontSize: "1.2em", color: "#333" }}>
+          <strong style={{ fontSize: "1.3em", color: THEME.textColor }}>
             {item.name}
           </strong>
-          <span style={{ fontWeight: "bold", color: "rgb(220, 53, 69)" }}>
+          <span
+            style={{
+              fontWeight: "bold",
+              color: THEME.danger,
+              fontSize: "1.1em",
+            }}
+          >
             Rp{formatCurrency(item.price)},00
           </span>
         </div>
 
-        <div style={{ color: "#666", marginBottom: "5px" }}>{item.desc}</div>
+        <div
+          style={{ color: "#7F8C8D", marginBottom: "8px", fontSize: "0.9em" }}
+        >
+          {item.desc}
+        </div>
 
         <div
           style={{
             fontSize: "12px",
-            opacity: 0.7,
-            padding: "3px 8px",
-            backgroundColor: "rgb(233, 236, 239)",
-            borderRadius: "4px",
+            fontWeight: "bold",
+            color: THEME.cardBg,
+            padding: "5px 10px",
+            backgroundColor: THEME.primaryAccent,
+            borderRadius: "20px",
             display: "inline-block",
           }}
         >
@@ -93,16 +123,22 @@ const SortableItem = ({ item, deleteItem, formatCurrency }) => {
       <button
         onClick={() => deleteItem(item.id)}
         style={{
-          background: "rgb(220, 53, 69)",
+          background: THEME.danger,
           color: "white",
-          padding: "8px 15px",
-          borderRadius: "6px",
+          padding: "10px 18px",
+          borderRadius: "8px",
           border: "none",
           cursor: "pointer",
           flexShrink: 0,
+          fontWeight: "bold",
+          transition: "background-color 0.2s",
         }}
+        onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#C0392B")}
+        onMouseOut={(e) =>
+          (e.currentTarget.style.backgroundColor = THEME.danger)
+        }
       >
-        Hapus
+        ✕ Hapus
       </button>
     </div>
   );
@@ -110,13 +146,17 @@ const SortableItem = ({ item, deleteItem, formatCurrency }) => {
 
 // ⭐ 3. KOMPONEN UTAMA BUILDER
 export default function Builder() {
-  // --- STATE ---
+  // --- STATE INPUT & DATA ---
   const [menu, setMenu] = useState([]);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [desc, setDesc] = useState("");
   const [category, setCategory] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+
+  // ⭐ STATE FILTER BARU ⭐
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedFilter, setSelectedFilter] = useState("Semua Kategori");
 
   // --- HANDLERS LOKAL ---
   const handlePriceChange = (e) => {
@@ -131,7 +171,7 @@ export default function Builder() {
     const { data, error } = await supabase
       .from("menu_items")
       .select("id, name, Harga, Deskripsi, Kategori, foto_url, order")
-      .order("order", { ascending: true }); // Urutkan berdasarkan kolom 'order'
+      .order("order", { ascending: true });
 
     if (error) {
       console.error("Error fetching menu:", error);
@@ -158,7 +198,7 @@ export default function Builder() {
     if (!name || !price) return alert("Nama & harga wajib diisi!");
     if (!category) return alert("Kategori wajib diisi!");
 
-    const parsedPrice = parseFloat(price);
+    const parsedPrice = parseInt(price, 10);
 
     if (isNaN(parsedPrice)) {
       return alert("Harga harus diisi dengan angka yang valid!");
@@ -170,7 +210,7 @@ export default function Builder() {
       Deskripsi: desc,
       Kategori: category,
       foto_url: imageUrl,
-      order: menu.length, // Order baru = panjang array saat ini
+      order: menu.length,
     };
 
     const { data, error } = await supabase
@@ -222,106 +262,148 @@ export default function Builder() {
       const oldIndex = menu.findIndex((item) => item.id === active.id);
       const newIndex = menu.findIndex((item) => item.id === over.id);
 
-      // 1. Update state lokal (tampilan)
       const newMenu = arrayMove(menu, oldIndex, newIndex);
       setMenu(newMenu);
 
-      // 2. SIMPAN URUTAN BARU KE SUPABASE (Auto-Save)
       for (let i = 0; i < newMenu.length; i++) {
         const item = newMenu[i];
 
-        const { error } = await supabase
+        await supabase
           .from("menu_items")
           .update({ order: i })
           .eq("id", item.id);
-
-        if (error) {
-          console.error("Gagal update urutan untuk item", item.name, error);
-        }
       }
     }
   };
+
+  // --- LOGIKA FILTER DAN SEARCH UTAMA ---
+  const allCategories = [
+    "Semua Kategori",
+    ...new Set(menu.map((item) => item.category)),
+  ];
+
+  const filteredMenu = useMemo(() => {
+    let currentMenu = menu;
+    const lowerCaseSearch = searchTerm.toLowerCase();
+
+    // 1. Filter berdasarkan Kategori
+    if (selectedFilter !== "Semua Kategori") {
+      currentMenu = currentMenu.filter(
+        (item) => item.category === selectedFilter
+      );
+    }
+
+    // 2. Filter berdasarkan Search Term (Nama atau Deskripsi)
+    if (lowerCaseSearch) {
+      currentMenu = currentMenu.filter(
+        (item) =>
+          item.name.toLowerCase().includes(lowerCaseSearch) ||
+          item.desc.toLowerCase().includes(lowerCaseSearch)
+      );
+    }
+
+    return currentMenu;
+  }, [menu, searchTerm, selectedFilter]);
 
   // --- RENDERING JSX ---
   return (
     <div
       style={{
         minHeight: "100vh",
-        backgroundColor: "rgb(240, 248, 255)",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "flex-start",
+        backgroundColor: THEME.bgMain,
+        fontFamily: "sans-serif",
         padding: "40px 20px",
       }}
     >
       <div
         style={{
-          maxWidth: "900px",
+          maxWidth: "1300px",
           width: "100%",
-          backgroundColor: "#fff",
-          padding: "30px",
+          margin: "0 auto",
+          backgroundColor: THEME.cardBg,
+          padding: "40px",
           borderRadius: "15px",
-          boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
+          boxShadow: THEME.shadow,
         }}
       >
         <h1
-          style={{ textAlign: "center", marginBottom: "30px", color: "#333" }}
+          style={{
+            marginBottom: "40px",
+            color: THEME.textColor,
+            borderBottom: `3px solid ${THEME.secondaryAccent}`,
+            paddingBottom: "10px",
+          }}
         >
-          Menu Builder
+          Menu Admin
         </h1>
 
         {/* KONTENER DUA KOLOM DENGAN FLEXBOX */}
-        <div style={{ display: "flex", gap: "30px", alignItems: "flex-start" }}>
-          {/* Kolom Kiri: Form Tambah Item */}
+        <div style={{ display: "flex", gap: "40px", alignItems: "flex-start" }}>
+          {/* Kolom Kiri: Form Tambah Item (INPUT STICKY) */}
           <div
+            // ⭐ PERUBAHAN UTAMA DI SINI: MENAMBAH STICKY POSITION ⭐
             style={{
               flexShrink: 0,
-              width: "400px",
-              padding: "20px",
-              border: "1px solid #ddd",
+              width: "350px",
+              // --- Properti Sticky ---
+              position: "sticky",
+              top: "40px", // Jarak dari atas layar saat discroll
+              // -----------------------
+              padding: "30px",
+              border: `1px solid ${THEME.inputBorder}`,
               borderRadius: "12px",
-              backgroundColor: "#f9f9f9",
-              boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+              backgroundColor: THEME.bgMain,
+              boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
             }}
           >
-            <h3>Tambah Menu</h3>
+            <h3 style={{ color: THEME.primaryAccent, marginBottom: "20px" }}>
+              Input Menu Baru
+            </h3>
 
             <input
-              placeholder="Nama menu…"
+              placeholder="Nama menu (misal: Kopi Susu Aren)"
               value={name}
               onChange={(e) => setName(e.target.value)}
               style={{
-                width: "95%",
-                marginBottom: "10px",
-                padding: "10px",
-                borderRadius: "6px",
-                border: "1px solid #ccc",
+                width: "100%",
+                marginBottom: "12px",
+                padding: "12px",
+                borderRadius: "8px",
+                border: `1px solid ${THEME.inputBorder}`,
+                boxSizing: "border-box",
+                color: THEME.textColor,
               }}
             />
 
             <input
-              placeholder="Harga…"
+              placeholder="Harga (misal: 18000)"
               value={formatCurrency(price)}
               onChange={handlePriceChange}
               style={{
-                width: "95%",
-                marginBottom: "15px",
-                padding: "10px",
-                borderRadius: "6px",
-                border: "1px solid #ccc",
+                width: "100%",
+                marginBottom: "12px",
+                padding: "12px",
+                borderRadius: "8px",
+                border: `1px solid ${THEME.inputBorder}`,
+                boxSizing: "border-box",
+                color: THEME.textColor,
               }}
             />
 
-            <input
-              placeholder="Deskripsi…"
+            <textarea
+              placeholder="Deskripsi singkat menu…"
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
+              rows="3"
               style={{
-                width: "95%",
-                marginBottom: "15px",
-                padding: "10px",
-                borderRadius: "6px",
-                border: "1px solid #ccc",
+                width: "100%",
+                marginBottom: "12px",
+                padding: "12px",
+                borderRadius: "8px",
+                border: `1px solid ${THEME.inputBorder}`,
+                boxSizing: "border-box",
+                resize: "vertical",
+                color: THEME.textColor,
               }}
             />
 
@@ -330,16 +412,19 @@ export default function Builder() {
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               style={{
-                width: "101%",
-                marginBottom: "15px",
-                padding: "10px",
-                borderRadius: "6px",
-                border: "1px solid #ccc",
-                height: "40px",
+                width: "100%",
+                marginBottom: "20px",
+                padding: "12px",
+                borderRadius: "8px",
+                border: `1px solid ${THEME.inputBorder}`,
+                boxSizing: "border-box",
+                height: "45px",
+                color: THEME.textColor,
+                backgroundColor: THEME.cardBg,
               }}
             >
               <option value="" disabled>
-                Jenis Menu
+                Pilih Kategori Menu
               </option>
               <option value="Makanan">Makanan</option>
               <option value="Minuman">Minuman</option>
@@ -348,25 +433,35 @@ export default function Builder() {
             </select>
 
             {/* Upload Gambar */}
-            <p>Upload Gambar Menu:</p>
+            <p
+              style={{
+                marginBottom: "10px",
+                color: THEME.textColor,
+                fontWeight: "bold",
+              }}
+            >
+              🖼️ Gambar Menu:
+            </p>
             <ImageUploader onUploaded={(url) => setImageUrl(url)} />
 
-            {/* PREVIEW GAMBAR LEBIH BESAR & PUSAT */}
+            {/* PREVIEW GAMBAR */}
             {imageUrl && (
               <div
                 style={{
-                  marginTop: "10px",
-                  marginBottom: "10px",
+                  marginTop: "20px",
                   textAlign: "center",
                 }}
               >
-                <p>Preview Gambar:</p>
                 <img
                   src={imageUrl}
-                  alt="menu"
+                  alt="menu preview"
                   width="300"
                   height="200"
-                  style={{ borderRadius: "8px", objectFit: "cover" }}
+                  style={{
+                    borderRadius: "10px",
+                    objectFit: "cover",
+                    border: `3px solid ${THEME.primaryAccent}`,
+                  }}
                 />
               </div>
             )}
@@ -374,66 +469,124 @@ export default function Builder() {
             <button
               onClick={addItem}
               style={{
-                marginTop: "20px",
+                marginTop: "30px",
                 width: "100%",
-                padding: "10px",
-                backgroundColor: "rgb(40, 167, 69)",
+                padding: "15px",
+                backgroundColor: THEME.primaryAccent,
                 color: "white",
                 border: "none",
-                borderRadius: "6px",
+                borderRadius: "8px",
                 cursor: "pointer",
                 fontWeight: "bold",
+                fontSize: "1.1em",
+                transition: "background-color 0.2s",
               }}
+              onMouseOver={(e) =>
+                (e.currentTarget.style.backgroundColor = "#8BA154")
+              }
+              onMouseOut={(e) =>
+                (e.currentTarget.style.backgroundColor = THEME.primaryAccent)
+              }
             >
-              + Tambah Menu
+              ➕ Tambah Menu Sekarang
             </button>
           </div>
           {/* Akhir Kolom Kiri */}
 
-          {/* Kolom Kanan: Daftar Menu */}
+          {/* Kolom Kanan: Daftar Menu (Filter, Search, D&D) */}
           <div
             style={{
               flexGrow: 1,
-              padding: "20px",
-              backgroundColor: "#fff",
-              borderRadius: "12px",
-              boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+              padding: "20px 0", // Padding vertikal saja
             }}
           >
             <h3
               style={{
-                textAlign: "center",
                 marginBottom: "20px",
-                color: "#333",
+                color: THEME.textColor,
+                fontSize: "1.5em",
               }}
             >
-              Daftar Menu
+              Atur Daftar Menu ({filteredMenu.length} Item)
             </h3>
 
-            {menu.length === 0 && (
-              <p style={{ textAlign: "center", color: "#666" }}>
-                Belum ada menu.
+            {/* ⭐ SEARCH DAN FILTER ⭐ */}
+            <div style={{ display: "flex", gap: "15px", marginBottom: "30px" }}>
+              {/* Search Bar */}
+              <input
+                type="text"
+                placeholder="🔍 Cari menu berdasarkan nama atau deskripsi..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  flexGrow: 1,
+                  padding: "12px",
+                  borderRadius: "8px",
+                  border: `1px solid ${THEME.inputBorder}`,
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                  color: THEME.textColor,
+                }}
+              />
+
+              {/* Filter Kategori */}
+              <select
+                value={selectedFilter}
+                onChange={(e) => setSelectedFilter(e.target.value)}
+                style={{
+                  width: "200px",
+                  padding: "12px",
+                  borderRadius: "8px",
+                  border: `1px solid ${THEME.inputBorder}`,
+                  color: THEME.textColor,
+                  backgroundColor: THEME.cardBg,
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                }}
+              >
+                {allCategories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {filteredMenu.length === 0 && (
+              <p
+                style={{
+                  textAlign: "center",
+                  color: "#7F8C8D",
+                  marginTop: "50px",
+                  padding: "30px",
+                  backgroundColor: THEME.bgMain,
+                  borderRadius: "10px",
+                }}
+              >
+                {menu.length === 0
+                  ? "👋 Belum ada menu yang diinput. Mulai tambah dari kolom kiri!"
+                  : "😞 Menu tidak ditemukan sesuai kriteria pencarian/filter Anda."}
               </p>
             )}
 
-            {/* KONTEKS DND UTAMA */}
+            {/* List Menu yang Dapat Diurutkan */}
             <DndContext
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
-              <SortableContext
-                items={menu.map((item) => item.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {menu.map((item) => (
-                  <SortableItem
-                    key={item.id}
-                    item={item}
-                    deleteItem={deleteItem}
-                    formatCurrency={formatCurrency}
-                  />
-                ))}
-              </SortableContext>
+              {filteredMenu.length > 0 && (
+                <SortableContext
+                  items={filteredMenu.map((item) => item.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {filteredMenu.map((item) => (
+                    <SortableItem
+                      key={item.id}
+                      item={item}
+                      deleteItem={deleteItem}
+                      formatCurrency={formatCurrency}
+                    />
+                  ))}
+                </SortableContext>
+              )}
             </DndContext>
           </div>
           {/* Akhir Kolom Kanan */}

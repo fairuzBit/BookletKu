@@ -14,7 +14,7 @@ import {
 } from "recharts";
 
 // ===========================================
-// ⭐ 1. DEFINISI HELPERS & KONFIGURASI ⭐
+// ⭐ 1. DEFINISI HELPERS & KONFIGURASI (PITCH.IO STYLE) ⭐
 // ===========================================
 
 const formatCurrency = (amount) => {
@@ -28,28 +28,37 @@ const CURRENT_USER_ID = "user_unique_id_123";
 const BASE_URL = window.location.origin;
 const PREVIEW_URL = `${BASE_URL}/preview/${CURRENT_USER_ID}`;
 
-const theme = {
-  bgMain: "#f4f7ff",
-  bgSidebar: "#ffffff",
-  cardBg: "#ffffff",
-  textColor: "#333333",
-  accentColor: "#007bff", // Biru terang untuk Chart/Accent
+// ⭐ PALET WARNA BARU (Mengambil dari desain Pitch.io) ⭐
+const THEME = {
+  bgMain: "#F4F6F8", // Latar belakang luar
+  bgContent: "#FFFFFF", // Latar belakang area konten
+  bgSidebar: "#FFFFFF", // Latar belakang Sidebar
+  textColor: "#2C3E50", // Teks utama (Dark Navy)
+  accentPurple: "#0600AB", // Biru Gelap
+  accentYellow: "#FFC300", // Kuning (Untuk Metrik 1)
+  accentBlue: "#7B68EE", // Biru Violet (Untuk Metrik 2)
+  accentPink: "#FF6392", // Merah Muda (Untuk Metrik 3)
   graphLine: "#28a745",
+  shadow: "0 8px 25px rgba(0, 0, 0, 0.08)",
+  shadowLight: "0 2px 5px rgba(0, 0, 0, 0.05)",
 };
 
-// --- Style Link Navigasi ---
-const navLinkStyle = (theme, isActive) => ({
-  display: "block",
+// --- Style Link Navigasi (Sederhana, sesuai Pitch.io) ---
+const navLinkStyle = (isActive) => ({
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
   textDecoration: "none",
-  opacity: isActive ? 1 : 0.8,
-  marginBottom: "10px",
-  padding: "10px 20px",
+  marginBottom: "5px",
+  padding: "10px 15px",
   borderRadius: "8px",
   cursor: "pointer",
-  backgroundColor: isActive ? "#e0f7fa" : "transparent",
-  color: isActive ? theme.accentColor : theme.textColor,
+  // Warna sesuai desain
+  backgroundColor: isActive ? "#f0f0ffff" : "transparent",
+  color: isActive ? THEME.accentPurple : THEME.textColor,
   fontWeight: isActive ? "bold" : "normal",
   transition: "background-color 0.2s",
+  fontSize: "0.95em",
 });
 
 // ===========================================
@@ -65,9 +74,12 @@ export default function Home() {
   const [waInput, setWaInput] = useState(settings.whatsappNumber);
   const [notification, setNotification] = useState(null);
 
-  // --- Data Simulasi & Perhitungan ---
+  // Data Simulasi & Perhitungan ---
   const totalItems = menu.length;
   const totalInventoryValue = menu.reduce((sum, item) => sum + item.price, 0);
+  const totalLeads = 126; // Meniru Total Views
+  const completedRate = 77; // Meniru Complete %
+  const uniqueViews = 91; // Meniru Unique Views
   const simulatedSales = totalInventoryValue * 1.5;
 
   // --- FUNGSI NOTIFIKASI POP-UP ---
@@ -107,30 +119,9 @@ export default function Home() {
     fetchSettings();
   }, []);
 
-  // --- TEMPLATE HANDLER (UPDATE Logic) ---
-  const handleTemplateChange = async (newTemplate) => {
-    setSettings({ ...settings, template: newTemplate });
-
-    const { error } = await supabase
-      .from("user_settings")
-      .update({ template: newTemplate })
-      .eq("user_id", CURRENT_USER_ID);
-
-    if (error) {
-      console.error("Gagal menyimpan template:", error);
-      showNotification("Gagal menyimpan pilihan template!", "error");
-    } else {
-      showNotification(
-        `Template berhasil diubah menjadi: ${newTemplate}`,
-        "success"
-      );
-    }
-  };
-
   // --- WHATSAPP HANDLER (UPDATE Logic) ---
   const handleWhatsappChange = async (newNumber) => {
     const cleanNumber = newNumber.replace(/[^0-9]/g, "");
-
     if (!cleanNumber)
       return showNotification("Nomor WA tidak boleh kosong.", "error");
 
@@ -158,146 +149,244 @@ export default function Home() {
       style={{
         display: "flex",
         minHeight: "100vh",
-        backgroundColor: theme.bgMain,
-        color: theme.textColor,
+        backgroundColor: THEME.bgMain,
+        color: THEME.textColor,
+        fontFamily: "sans-serif",
       }}
     >
       {/* ⭐ RENDER NOTIFIKASI POP-UP DI SINI ⭐ */}
       {notification && (
-        <NotificationToast notification={notification} theme={theme} />
+        <NotificationToast notification={notification} theme={THEME} />
       )}
 
       {/* =================================== */}
-      {/* ⭐ KOLOM 1: SIDEBAR NAV (NAVIGASI UTAMA) ⭐ */}
+      {/* ⭐ KOLOM 1: SIDEBAR NAV (FIXED/STICKY) ⭐ */}
       {/* =================================== */}
       <div
         style={{
-          width: "240px",
-          backgroundColor: theme.bgSidebar,
-          padding: "30px 10px",
+          width: "350px",
+          backgroundColor: THEME.bgSidebar,
+          padding: "20px 0", // Padding atas/bawah
           flexShrink: 0,
           height: "100vh",
-          position: "sticky",
-          top: 0,
-          boxShadow: "2px 0 10px rgba(0,0,0,0.05)",
-          borderRight: "1px solid #eee",
+          position: "sticky", // Menggunakan sticky agar tetap saat konten discroll
+          top: 0, // Menempel di bagian atas
+          // ------------------------
+          boxShadow: THEME.shadowLight,
+          borderRight: "1px solid #f0f0f0",
         }}
       >
-        <h2
+        {/* NAVIGATION LINKS */}
+        <div style={{ padding: "0 20px" }}>
+          <Link to="/" style={navLinkStyle(true)}>
+            Dashboard
+          </Link>
+          <Link to="/builder" style={navLinkStyle(false)}>
+            Tambah Menu
+          </Link>
+          <Link
+            to={`/preview/${CURRENT_USER_ID}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={navLinkStyle(false)}
+          >
+            Dashboard Pelanggan
+          </Link>
+        </div>
+
+        <div
           style={{
-            marginBottom: "40px",
-            textAlign: "center",
-            color: theme.accentColor,
+            padding: "0 20px 20px 20px",
+            borderBottom: "1px solid #f0f0f0",
+            marginBottom: "20px",
           }}
         >
-          Admin Menu
-        </h2>
-
-        {/* NAVIGATION LINKS */}
-        <Link to="/" style={navLinkStyle(theme, true)}>
-          📈 Dashboard Penjualan
-        </Link>
-
-        <Link to="/builder" style={navLinkStyle(theme, false)}>
-          🧱 Tambah Menu
-        </Link>
-
-        <Link
-          to={`/preview/${CURRENT_USER_ID}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={navLinkStyle(theme, false)}
-        >
-          ⚙️ Preview User
-        </Link>
-
-        <Link to="/#whatsapp-settings" style={navLinkStyle(theme, false)}>
-          💬 WA Setting
-        </Link>
+          <Link
+            to="/builder"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "5px",
+              backgroundColor: THEME.accentPurple,
+              color: "white",
+              padding: "10px 15px",
+              borderRadius: "8px",
+              textDecoration: "none",
+              fontWeight: "bold",
+              boxShadow: "0 4px 8px rgba(6, 0, 171, 0.4)", // Shadow sesuai accentPurple baru
+            }}
+          >
+            <span style={{ fontSize: "1.5em", fontWeight: "normal" }}>+</span>{" "}
+            Tambah Menu
+          </Link>
+        </div>
       </div>
 
       {/* =================================== */}
       {/* ⭐ KOLOM 2: KONTEN DASHBOARD ⭐ */}
       {/* =================================== */}
-      <div style={{ flexGrow: 1, padding: "30px 40px", overflowY: "auto" }}>
-        <h1 style={{ marginBottom: "40px", color: theme.textColor }}>
-          Ringkasan Bisnis
-        </h1>
-
-        {/* --- ROW 1: METRIC CARDS --- */}
+      <div style={{ flexGrow: 1, padding: "0", overflowY: "auto" }}>
+        {/* Kontener Konten Utama dengan Padding dan Background Putih */}
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "20px",
-            marginBottom: "30px",
+            padding: "30px 40px",
+            backgroundColor: THEME.bgContent,
+            minHeight: "100vh",
+            borderRadius: "15px",
+            boxShadow: THEME.shadow,
           }}
         >
-          <MetricCard
-            title="Total Penjualan"
-            value={`Rp${formatCurrency(simulatedSales)},00`}
-            icon="💵"
-            theme={theme}
-          />
+          {/* --- TOP HEADER BAR --- */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "30px",
+              paddingBottom: "15px",
+              borderBottom: "1px solid #eee",
+            }}
+          >
+            <div>
+              <h2
+                style={{
+                  margin: 0,
+                  fontWeight: "normal",
+                  color: THEME.textColor,
+                }}
+              >
+                Dashboard Admin
+              </h2>
+              <p style={{ margin: 0, fontSize: "0.9em", color: "#7F8C8D" }}>
+                Rabu, 26 November 2025
+              </p>
+            </div>
+            {/* User Profile dan Notifikasi (Simulasi) */}
+            <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+              <div
+                style={{
+                  padding: "8px 15px",
+                  backgroundColor: THEME.accentPurple,
+                  color: "white",
+                  borderRadius: "50%",
+                  fontWeight: "bold",
+                }}
+              >
+                AJ
+              </div>
+            </div>
+          </div>
 
-          <MetricCard
-            title="Total Menu Tersedia"
-            value={`${totalItems} Item`}
-            icon="🍔"
-            theme={theme}
-          />
+          {/* --- HERO BANNER / WELCOME MESSAGE --- */}
+          <div
+            style={{
+              backgroundColor: THEME.accentPurple,
+              color: "white",
+              padding: "40px",
+              borderRadius: "15px",
+              marginBottom: "40px",
+              position: "relative",
+              overflow: "hidden",
+              boxShadow: THEME.shadow,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            {/* Konten Teks */}
+            <div style={{ maxWidth: "60%", zIndex: 1 }}>
+              <h1 style={{ margin: 0, fontSize: "2.5em", fontWeight: "bold" }}>
+                Hi, Admin!
+              </h1>
+              <p style={{ fontSize: "1.2em", opacity: 0.9 }}>
+                Siap untuk memulai hari Anda dengan mengatur menu?
+              </p>
+            </div>
+          </div>
 
-          <MetricCard
-            title="Tampilan Aktif"
-            value={settings.template}
-            icon="🎨"
-            isSelect={true}
-            onSelect={handleTemplateChange}
-            currentTemplate={settings.template}
-            theme={theme}
-          />
-        </div>
+          {/* --- METRICS OVERVIEW --- */}
+          <h3
+            style={{
+              marginBottom: "20px",
+              color: THEME.textColor,
+              opacity: 0.7,
+            }}
+          >
+            Overview
+          </h3>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)", // 4 kolom untuk metrik
+              gap: "20px",
+              marginBottom: "40px",
+            }}
+          >
+            {/* METRIC 1: Open Rate (Total Penjualan) - Warna Kuning */}
+            <PitchMetricCard
+              title="Total Penjualan"
+              value={`Rp${formatCurrency(simulatedSales)},00`}
+              themeColor={THEME.accentYellow}
+              icon="💵"
+            />
 
-        {/* --- ROW 2: GRAFIK PENJUALAN (SIMULASI) --- */}
-        <div style={{ marginBottom: "40px" }}>
-          <GraphPlaceholder theme={theme} />
-        </div>
+            {/* METRIC 2: Complete % (Total Menu) - Warna Biru Violet */}
+            <PitchMetricCard
+              value={`${totalItems} Item`}
+              themeColor={THEME.accentBlue}
+              title="Total Menu"
+            />
 
-        {/* --- ROW 3: QR CODE & WA SETTINGS --- */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "20px",
-          }}
-        >
-          <PublishCard theme={theme} previewUrl={PREVIEW_URL} />
+            {/* METRIC 3: Unique Views (Total Leads) - Warna Pink */}
+            <PitchMetricCard
+              title="Pengunjung"
+              value={uniqueViews}
+              themeColor={THEME.accentPink}
+            />
+            {/* METRIC 4: Total Views (Total Leads) - Warna Ungu */}
+            <PitchMetricCard
+              title="Total Leads"
+              value={totalLeads}
+              themeColor={THEME.accentPurple}
+            />
+          </div>
 
-          <WhatsappSettingsCard
-            id="whatsapp-settings"
-            theme={theme}
-            waInput={waInput}
-            setWaInput={setWaInput}
-            onSave={handleWhatsappChange}
-            currentNumber={settings.whatsappNumber}
-          />
+          {/* --- GRAFIK & QR CODE (Diubah menjadi list/item) --- */}
+          <h3
+            style={{
+              marginBottom: "20px",
+              color: THEME.textColor,
+              opacity: 0.7,
+            }}
+          >
+            Pengaturan & Analisis
+          </h3>
 
           <div
             style={{
-              padding: "20px",
-              backgroundColor: theme.cardBg,
-              borderRadius: "12px",
-              opacity: 0.7,
-              boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-              border: `1px solid #e0e0e0`,
-              color: theme.textColor,
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "30px",
             }}
           >
-            <h3>Analisis Pengunjung</h3>
-            <p>Tracked Views: 452x</p>
-            <p style={{ marginTop: "10px", fontSize: "0.9em" }}>
-              *Fitur ini membutuhkan implementasi logic tracking di Preview.jsx.
-            </p>
+            {/* KOLOM KIRI: GRAFIK TREN */}
+            <GraphPlaceholder theme={THEME} />
+
+            {/* KOLOM KANAN: QR & WA SETTINGS */}
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "20px" }}
+            >
+              <PublishCard theme={THEME} previewUrl={PREVIEW_URL} />
+              <WhatsappSettingsCard
+                id="whatsapp-settings"
+                theme={THEME}
+                waInput={waInput}
+                setWaInput={setWaInput}
+                onSave={handleWhatsappChange}
+                currentNumber={settings.whatsappNumber}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -309,14 +398,46 @@ export default function Home() {
 // ⭐ 3. KOMPONEN PEMBANTU (Deklarasi Tunggal) ⭐
 // ===========================================
 
-// --- Komponen Notifikasi Pop-up (Toast) ---
+// --- Card Metrik Gaya Pitch.io ---
+const PitchMetricCard = ({ title, value, themeColor, icon, suffix }) => (
+  <div
+    style={{
+      padding: "20px",
+      backgroundColor: themeColor,
+      borderRadius: "10px",
+      color: "white",
+      fontWeight: "bold",
+      boxShadow: `0 4px 15px ${themeColor}60`,
+      textAlign: "center",
+      minHeight: "100px",
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+    }}
+  >
+    <div style={{ fontSize: "2.5em", marginBottom: "5px" }}>
+      {value}
+      {suffix && (
+        <span
+          style={{ fontSize: "0.5em", fontWeight: "normal", marginLeft: "5px" }}
+        >
+          {suffix}
+        </span>
+      )}
+    </div>
+    <div style={{ opacity: 0.8, fontSize: "0.9em" }}>{title}</div>
+  </div>
+);
+
+// --- Komponen Pembantu yang Sudah Ada (Pastikan dideklarasikan di luar Home) ---
+
 const NotificationToast = ({ notification, theme }) => {
+  // ... (Logika Toast Tetap Sama)
   if (!notification) return null;
 
-  // Warna Kustom: Ungu (Aksen Utama) dan Putih
-  const successColor = "#5014a0"; // Ungu Tua (Primary Accent)
-  const errorColor = "#dc3545"; // Merah
-  const icon = notification.type === "success" ? "✓" : "✗"; // Ikon Centang/Silang
+  const successColor = theme.accentPurple;
+  const errorColor = theme.danger || "#dc3545";
+  const icon = notification.type === "success" ? "✓" : "✗";
 
   const bgColor = notification.type === "success" ? successColor : errorColor;
   const messageColor = "white";
@@ -335,10 +456,10 @@ const NotificationToast = ({ notification, theme }) => {
         zIndex: 1000,
         display: "flex",
         alignItems: "center",
-        // ⭐ ANIMASI POP-UP ⭐
         transition: "transform 0.3s ease-in-out",
         transform: "translateY(0)",
         fontSize: "1em",
+        fontFamily: "sans-serif",
       }}
     >
       <span
@@ -353,7 +474,7 @@ const NotificationToast = ({ notification, theme }) => {
       </span>
       <div>
         <strong>
-          {notification.type === "success" ? "Sukses!" : "Gagal!"}
+          {notification.type === "success" ? "Sukses!" : "Gagal!"}:
         </strong>
         <p style={{ margin: 0 }}>{notification.message}</p>
       </div>
@@ -361,89 +482,16 @@ const NotificationToast = ({ notification, theme }) => {
   );
 };
 
-// --- Card Metrik Sederhana ---
-const MetricCard = ({
-  title,
-  value,
-  icon,
-  theme,
-  isSelect,
-  onSelect,
-  currentTemplate,
-}) => (
-  <div
-    style={{
-      padding: "20px",
-      backgroundColor: theme.cardBg,
-      borderRadius: "12px",
-      boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-      border: `1px solid #e0e0e0`,
-      color: theme.textColor,
-    }}
-  >
-    <div
-      style={{
-        fontSize: "2em",
-        marginBottom: "10px",
-        color: theme.accentColor,
-      }}
-    >
-      {icon}
-    </div>
-    <div style={{ opacity: 0.7 }}>{title}</div>
-    <h3
-      style={{ fontSize: "1.5em", marginTop: "5px", color: theme.accentColor }}
-    >
-      {value}
-    </h3>
-
-    {isSelect && (
-      <div style={{ marginTop: "15px", display: "flex", gap: "10px" }}>
-        <button
-          onClick={() => onSelect("Colorful")}
-          style={{
-            padding: "8px 12px",
-            backgroundColor:
-              currentTemplate === "Colorful" ? theme.accentColor : "#ccc",
-            color: currentTemplate === "Colorful" ? "white" : theme.textColor,
-            border: "none",
-            borderRadius: "6px",
-            cursor: "pointer",
-            opacity: 0.9,
-          }}
-        >
-          Colorful
-        </button>
-        <button
-          onClick={() => onSelect("Minimalist")}
-          style={{
-            padding: "8px 12px",
-            backgroundColor:
-              currentTemplate === "Minimalist" ? theme.accentColor : "#ccc",
-            color: currentTemplate === "Minimalist" ? "white" : theme.textColor,
-            border: "none",
-            borderRadius: "6px",
-            cursor: "pointer",
-            opacity: 0.9,
-          }}
-        >
-          Minimalist
-        </button>
-      </div>
-    )}
-  </div>
-);
-
 // --- Placeholder Grafik Garis (Menggunakan Recharts) ---
 const GraphPlaceholder = ({ theme }) => {
   // Data Penjualan Simulasi (7 Hari)
-  const simulatedData = [
+  const simulasiData = [
     { day: "Sen", Pesanan: 15, Dilihat: 50 },
     { day: "Sel", Pesanan: 25, Dilihat: 70 },
     { day: "Rab", Pesanan: 18, Dilihat: 65 },
-    { day: "Kam", Pesanan: 35, Dilihat: 90 },
-    { day: "Jum", Pesanan: 45, Dilihat: 120 },
-    { day: "Sab", Pesanan: 55, Dilihat: 150 },
+    { day: "Kam", Pesanan: 70, Dilihat: 90 },
+    { day: "Jum", Pesanan: 80, Dilihat: 120 },
+    { day: "Sab", Pesanan: 100, Dilihat: 150 },
     { day: "Min", Pesanan: 30, Dilihat: 80 },
   ];
 
@@ -451,29 +499,32 @@ const GraphPlaceholder = ({ theme }) => {
     <div
       style={{
         padding: "20px",
-        backgroundColor: theme.cardBg,
+        backgroundColor: theme.bgContent,
         borderRadius: "12px",
-        boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-        border: `1px solid #e0e0e0`,
+        boxShadow: theme.shadowLight,
+        border: `1px solid #f0f0f0`,
         height: "350px",
+        fontFamily: "sans-serif",
       }}
     >
       <h2 style={{ color: theme.textColor, marginBottom: "10px" }}>
-        Tren Penjualan Mingguan
+        Analisis Penjualan Harian & Jumlah User Akses.
       </h2>
-      <p style={{ opacity: 0.6, marginBottom: "20px" }}>*Data Disimulasikan</p>
-
       <ResponsiveContainer width="100%" height={250}>
         <LineChart
-          data={simulatedData}
+          data={simulasiData}
           margin={{ top: 5, right: 20, left: -20, bottom: 5 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="#000000ff"
+            opacity={0.5}
+          />
           <XAxis dataKey="day" stroke={theme.textColor} opacity={0.7} />
           <YAxis stroke={theme.textColor} opacity={0.7} />
           <Tooltip
             contentStyle={{
-              backgroundColor: theme.cardBg,
+              backgroundColor: theme.bgContent,
               border: "none",
               borderRadius: "5px",
             }}
@@ -483,7 +534,7 @@ const GraphPlaceholder = ({ theme }) => {
           <Line
             type="monotone"
             dataKey="Pesanan"
-            stroke={theme.accentColor}
+            stroke={theme.accentBlue}
             strokeWidth={2}
             activeDot={{ r: 8 }}
           />
@@ -505,17 +556,18 @@ const PublishCard = ({ theme, previewUrl }) => (
   <div
     style={{
       flex: 1,
-      padding: "20px",
-      backgroundColor: theme.cardBg,
+      padding: "25px",
+      backgroundColor: theme.bgContent,
       borderRadius: "12px",
-      boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+      boxShadow: theme.shadowLight,
       textAlign: "center",
-      border: `1px solid #e0e0e0`,
+      border: `1px solid #f0f0f0`,
       color: theme.textColor,
+      fontFamily: "sans-serif",
     }}
   >
     <h3>QR Code Publikasi</h3>
-    <p style={{ opacity: 0.7, marginBottom: "15px" }}>
+    <p style={{ opacity: 0.7, marginBottom: "15px", fontSize: "0.9em" }}>
       Scan untuk melihat tampilan pelanggan.
     </p>
 
@@ -523,14 +575,14 @@ const PublishCard = ({ theme, previewUrl }) => (
       style={{
         margin: "15px auto",
         width: "fit-content",
-        border: "5px solid #007bff",
+        border: `5px solid ${theme.accentPurple}`,
         borderRadius: "8px",
         boxShadow: "0 0 10px rgba(0,0,0,0.2)",
       }}
     >
       <QRCodeSVG
         value={previewUrl}
-        size={180}
+        size={150} // Ukuran QR code disesuaikan
         bgColor={"#ffffff"}
         fgColor={"#000000"}
         level={"Q"}
@@ -542,10 +594,11 @@ const PublishCard = ({ theme, previewUrl }) => (
       target="_blank"
       rel="noopener noreferrer"
       style={{
-        color: theme.accentColor,
+        color: theme.accentPurple,
         textDecoration: "none",
         marginTop: "10px",
         display: "block",
+        fontWeight: "bold",
       }}
     >
       Lihat Link Preview
@@ -565,16 +618,17 @@ const WhatsappSettingsCard = ({
   <div
     id={id}
     style={{
-      padding: "20px",
-      backgroundColor: theme.cardBg,
+      padding: "25px",
+      backgroundColor: theme.bgContent,
       borderRadius: "12px",
-      boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-      border: `1px solid #e0e0e0`,
+      boxShadow: theme.shadowLight,
+      border: `1px solid #f0f0f0`,
       color: theme.textColor,
+      fontFamily: "sans-serif",
     }}
   >
-    <h3>💬 Pengaturan WhatsApp</h3>
-    <p style={{ opacity: 0.7, marginBottom: "15px" }}>
+    <h3>Setting No Admin Default</h3>
+    <p style={{ opacity: 0.7, marginBottom: "15px", fontSize: "0.9em" }}>
       Nomor ini digunakan untuk checkout pelanggan (format 62xxxx).
     </p>
 
@@ -596,13 +650,18 @@ const WhatsappSettingsCard = ({
         onClick={() => onSave(waInput)}
         style={{
           padding: "10px 15px",
-          backgroundColor: theme.accentColor,
+          backgroundColor: theme.accentPurple,
           color: "white",
           border: "none",
           borderRadius: "6px",
           cursor: "pointer",
           fontWeight: "bold",
+          transition: "background-color 0.2s",
         }}
+        onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#9A6BFF")}
+        onMouseOut={(e) =>
+          (e.currentTarget.style.backgroundColor = theme.accentPurple)
+        }
       >
         Simpan WA
       </button>
