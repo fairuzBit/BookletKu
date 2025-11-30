@@ -14,6 +14,19 @@ import {
 } from "recharts";
 
 // ===========================================
+// ⭐ 0. HOOK UNTUK DETEKSI LEBAR LAYAR ⭐
+// ===========================================
+const useWindowWidth = () => {
+  const [width, setWidth] = useState(window.innerWidth);
+  useEffect(() => {
+    const handleResize = () => setWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+  return width;
+};
+
+// ===========================================
 // ⭐ 1. DEFINISI HELPERS & KONFIGURASI (PITCH.IO STYLE) ⭐
 // ===========================================
 
@@ -66,6 +79,10 @@ const navLinkStyle = (isActive) => ({
 // ===========================================
 
 export default function Home() {
+  const windowWidth = useWindowWidth(); // Dapatkan lebar layar
+  const isMobile = windowWidth < 768; // Definisikan breakpoint mobile
+  const isTablet = windowWidth < 1024; // Definisikan breakpoint tablet/kecil
+
   const [menu, setMenu] = useState([]);
   const [settings, setSettings] = useState({
     template: "Colorful",
@@ -77,9 +94,9 @@ export default function Home() {
   // Data Simulasi & Perhitungan ---
   const totalItems = menu.length;
   const totalInventoryValue = menu.reduce((sum, item) => sum + item.price, 0);
-  const totalLeads = 126; // Meniru Total Views
-  const completedRate = 77; // Meniru Complete %
-  const uniqueViews = 91; // Meniru Unique Views
+  const totalLeads = 126;
+  const completedRate = 77;
+  const uniqueViews = 91;
   const simulatedSales = totalInventoryValue * 1.5;
 
   // --- FUNGSI NOTIFIKASI POP-UP ---
@@ -152,6 +169,7 @@ export default function Home() {
         backgroundColor: THEME.bgMain,
         color: THEME.textColor,
         fontFamily: "sans-serif",
+        flexDirection: isMobile ? "column" : "row", // Tumpuk ke bawah di mobile
       }}
     >
       {/* ⭐ RENDER NOTIFIKASI POP-UP DI SINI ⭐ */}
@@ -164,19 +182,20 @@ export default function Home() {
       {/* =================================== */}
       <div
         style={{
-          width: "350px",
+          width: isMobile ? "100%" : "350px", // Lebar penuh di mobile
           backgroundColor: THEME.bgSidebar,
-          padding: "20px 0", // Padding atas/bawah
+          padding: isMobile ? "10px 0" : "20px 0",
           flexShrink: 0,
-          height: "100vh",
-          position: "sticky", // Menggunakan sticky agar tetap saat konten discroll
-          top: 0, // Menempel di bagian atas
+          // Properti Sticky/Fixed untuk Desktop/Tablet
+          height: isMobile ? "auto" : "100vh",
+          position: isMobile ? "relative" : "sticky",
+          top: 0,
           // ------------------------
           boxShadow: THEME.shadowLight,
-          borderRight: "1px solid #f0f0f0",
+          borderRight: isMobile ? "none" : "1px solid #f0f0f0",
+          borderBottom: isMobile ? "1px solid #f0f0f0" : "none",
         }}
       >
-        {/* NAVIGATION LINKS */}
         <div style={{ padding: "0 20px" }}>
           <Link to="/" style={navLinkStyle(true)}>
             Dashboard
@@ -196,9 +215,10 @@ export default function Home() {
 
         <div
           style={{
-            padding: "0 20px 20px 20px",
-            borderBottom: "1px solid #f0f0f0",
-            marginBottom: "20px",
+            padding: "20px",
+            borderTop: isMobile ? "1px solid #f0f0f0" : "none",
+            borderBottom: isMobile ? "none" : "1px solid #f0f0f0",
+            marginTop: isMobile ? "10px" : "20px",
           }}
         >
           <Link
@@ -214,7 +234,7 @@ export default function Home() {
               borderRadius: "8px",
               textDecoration: "none",
               fontWeight: "bold",
-              boxShadow: "0 4px 8px rgba(6, 0, 171, 0.4)", // Shadow sesuai accentPurple baru
+              boxShadow: "0 4px 8px rgba(6, 0, 171, 0.4)",
             }}
           >
             <span style={{ fontSize: "1.5em", fontWeight: "normal" }}>+</span>{" "}
@@ -230,7 +250,7 @@ export default function Home() {
         {/* Kontener Konten Utama dengan Padding dan Background Putih */}
         <div
           style={{
-            padding: "30px 40px",
+            padding: isMobile ? "20px" : "30px 40px", // Padding lebih kecil di mobile
             backgroundColor: THEME.bgContent,
             minHeight: "100vh",
             borderRadius: "15px",
@@ -246,6 +266,8 @@ export default function Home() {
               marginBottom: "30px",
               paddingBottom: "15px",
               borderBottom: "1px solid #eee",
+              flexDirection: isMobile ? "column" : "row", // Tumpuk header di mobile
+              alignItems: isMobile ? "flex-start" : "center",
             }}
           >
             <div>
@@ -263,7 +285,14 @@ export default function Home() {
               </p>
             </div>
             {/* User Profile dan Notifikasi (Simulasi) */}
-            <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "20px",
+                marginTop: isMobile ? "10px" : "0",
+              }}
+            >
               <div
                 style={{
                   padding: "8px 15px",
@@ -283,7 +312,7 @@ export default function Home() {
             style={{
               backgroundColor: THEME.accentPurple,
               color: "white",
-              padding: "40px",
+              padding: isMobile ? "20px" : "40px",
               borderRadius: "15px",
               marginBottom: "40px",
               position: "relative",
@@ -291,15 +320,23 @@ export default function Home() {
               boxShadow: THEME.shadow,
               display: "flex",
               alignItems: "center",
+              flexDirection: isMobile ? "column" : "row",
               justifyContent: "space-between",
+              textAlign: isMobile ? "center" : "left",
             }}
           >
             {/* Konten Teks */}
-            <div style={{ maxWidth: "60%", zIndex: 1 }}>
-              <h1 style={{ margin: 0, fontSize: "2.5em", fontWeight: "bold" }}>
+            <div style={{ maxWidth: isMobile ? "100%" : "60%", zIndex: 1 }}>
+              <h1
+                style={{
+                  margin: 0,
+                  fontSize: isMobile ? "1.8em" : "2.5em",
+                  fontWeight: "bold",
+                }}
+              >
                 Hi, Admin!
               </h1>
-              <p style={{ fontSize: "1.2em", opacity: 0.9 }}>
+              <p style={{ fontSize: isMobile ? "1em" : "1.2em", opacity: 0.9 }}>
                 Siap untuk memulai hari Anda dengan mengatur menu?
               </p>
             </div>
@@ -318,41 +355,39 @@ export default function Home() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)", // 4 kolom untuk metrik
-              gap: "20px",
+              // Kolom Metrik: 2 di Tablet/Mobile, 4 di Desktop
+              gridTemplateColumns: isMobile
+                ? "repeat(2, 1fr)"
+                : isTablet
+                ? "repeat(3, 1fr)"
+                : "repeat(4, 1fr)",
+              gap: isMobile ? "10px" : "20px",
               marginBottom: "40px",
             }}
           >
-            {/* METRIC 1: Open Rate (Total Penjualan) - Warna Kuning */}
+            {/* METRIC 1: Total Penjualan */}
             <PitchMetricCard
               title="Total Penjualan"
               value={`Rp${formatCurrency(simulatedSales)},00`}
               themeColor={THEME.accentYellow}
-              icon="💵"
             />
 
-            {/* METRIC 2: Complete % (Total Menu) - Warna Biru Violet */}
+            {/* METRIC 2: Total Menu */}
             <PitchMetricCard
               value={`${totalItems} Item`}
               themeColor={THEME.accentBlue}
               title="Total Menu"
             />
 
-            {/* METRIC 3: Unique Views (Total Leads) - Warna Pink */}
+            {/* METRIC 3: Pengunjung */}
             <PitchMetricCard
               title="Pengunjung"
               value={uniqueViews}
               themeColor={THEME.accentPink}
             />
-            {/* METRIC 4: Total Views (Total Leads) - Warna Ungu */}
-            <PitchMetricCard
-              title="Total Leads"
-              value={totalLeads}
-              themeColor={THEME.accentPurple}
-            />
           </div>
 
-          {/* --- GRAFIK & QR CODE (Diubah menjadi list/item) --- */}
+          {/* --- GRAFIK & QR CODE --- */}
           <h3
             style={{
               marginBottom: "20px",
@@ -366,12 +401,13 @@ export default function Home() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "30px",
+              // 1 kolom di mobile, 2 di desktop
+              gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+              gap: isMobile ? "20px" : "30px",
             }}
           >
             {/* KOLOM KIRI: GRAFIK TREN */}
-            <GraphPlaceholder theme={THEME} />
+            <GraphPlaceholder theme={THEME} isMobile={isMobile} />
 
             {/* KOLOM KANAN: QR & WA SETTINGS */}
             <div
@@ -429,16 +465,13 @@ const PitchMetricCard = ({ title, value, themeColor, icon, suffix }) => (
   </div>
 );
 
-// --- Komponen Pembantu yang Sudah Ada (Pastikan dideklarasikan di luar Home) ---
-
+// --- Notification Toast (Didefinisikan di luar Home) ---
 const NotificationToast = ({ notification, theme }) => {
-  // ... (Logika Toast Tetap Sama)
+  // ... (Logika Toast)
   if (!notification) return null;
-
   const successColor = theme.accentPurple;
   const errorColor = theme.danger || "#dc3545";
   const icon = notification.type === "success" ? "✓" : "✗";
-
   const bgColor = notification.type === "success" ? successColor : errorColor;
   const messageColor = "white";
 
@@ -483,7 +516,7 @@ const NotificationToast = ({ notification, theme }) => {
 };
 
 // --- Placeholder Grafik Garis (Menggunakan Recharts) ---
-const GraphPlaceholder = ({ theme }) => {
+const GraphPlaceholder = ({ theme, isMobile }) => {
   // Data Penjualan Simulasi (7 Hari)
   const simulasiData = [
     { day: "Sen", Pesanan: 15, Dilihat: 50 },
@@ -503,14 +536,14 @@ const GraphPlaceholder = ({ theme }) => {
         borderRadius: "12px",
         boxShadow: theme.shadowLight,
         border: `1px solid #f0f0f0`,
-        height: "350px",
+        height: isMobile ? "300px" : "350px", // Tinggi lebih pendek di mobile
         fontFamily: "sans-serif",
       }}
     >
       <h2 style={{ color: theme.textColor, marginBottom: "10px" }}>
         Analisis Penjualan Harian & Jumlah User Akses.
       </h2>
-      <ResponsiveContainer width="100%" height={250}>
+      <ResponsiveContainer width="100%" height={isMobile ? 220 : 250}>
         <LineChart
           data={simulasiData}
           margin={{ top: 5, right: 20, left: -20, bottom: 5 }}
